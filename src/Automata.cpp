@@ -173,19 +173,131 @@ bool Automata::IsAnyStateFinal(std::vector<int>& states_set_indexes) {
   return false;
 }
 
+std::string Automata::GetWordsUnion(const std::vector<std::string>& words) {
+  std::string words_union = "(";
+  for (int i = 0; i < words.size(); i++) {
+    words_union += words[i];
+    if (i != (words.size() - 1)) {
+      words_union += " + ";
+    }
+  }
+  words_union += ")";
+  return words_union;
+}
+
+bool Automata::CheckIfValueIsPresent(int value, const std::vector<int>& values) {
+  for (auto& element : values) {
+    if (element == value) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<int> Automata::GetUniqueDestinationIndexes(const std::vector<Transition>& values) {
+  std::vector<int> unique_values;
+  for (auto& value : values) {
+    if (!CheckIfValueIsPresent(value.destination_state_index, unique_values)) {
+      unique_values.push_back(value.destination_state_index);
+    }
+  }
+  return unique_values;
+}
+
+void Automata::ReplaceMultipleTransitions() {
+  for (auto& state : states) {
+    std::vector<int> unique_destination_state_indexes = GetUniqueDestinationIndexes(state.transitions);
+    int transitions_amount = (int)state.transitions.size();
+    for (auto& destination_state_index : unique_destination_state_indexes) {
+      std::vector<std::string> current_words;
+      for (int i = 0; i < transitions_amount; i++) {
+        if (state.transitions[i].destination_state_index == destination_state_index) {
+          current_words.push_back(state.transitions[i].input);
+        }
+      }
+      std::string new_input_word;
+      if (current_words.size() > 1) {
+        new_input_word = GetWordsUnion(current_words);
+      } else {
+        new_input_word = current_words[0];
+      }
+      InsertTransition(state.index, new_input_word, destination_state_index);
+    }
+    state.transitions.erase(state.transitions.begin(), state.transitions.begin() + transitions_amount);
+  }
+}
+
+const int NO_STATE_AVAILABLE = -1;
+
+int Automata::PickInternalStateForRemoval() {
+  for (auto& state : states) {
+    if (!state.is_final && !state.is_start && !state.transitions.empty()) {
+      return state.index;
+    }
+  }
+  return NO_STATE_AVAILABLE;
+}
+
 std::string Automata::FDFAtoRegularExpression() {
   std::vector<int> final_states_indexes = GetFinalStatesIndexes();
-  int final_state_index;
-  if (final_states_indexes.size() > 1) {
-    final_state_index = (int)states.size();
-    states.emplace_back(final_state_index, true, false);
-    for (auto& index : final_states_indexes) {
-      InsertTransition(index, epsilon, final_state_index);
-    }
-  } else {
-    final_state_index = final_states_indexes[0];
+  int final_state_index = (int)states.size();
+  states.emplace_back(final_state_index, true, false);
+  for (auto& index : final_states_indexes) {
+    InsertTransition(index, epsilon, final_state_index);
+    states[index].is_final = false;
   }
-  //todo
+  int new_starting_state_index = final_state_index + 1;
+  states.emplace_back(new_starting_state_index, false, true);
+  InsertTransition(new_starting_state_index, epsilon, start_state_index);
+  states[start_state_index].is_start = false;
+  start_state_index = new_starting_state_index;
+  bool finish_flag = false;
+  while (!finish_flag) {
+    finish_flag = true;
+    ReplaceMultipleTransitions();
+    int picked_state_index = PickInternalStateForRemoval();
+    if (picked_state_index != NO_STATE_AVAILABLE) {
+      finish_flag = false;
+      std::string middle_world;
+      if (TransitionExistsCheck(picked_state_index, picked_state_index)) {
+        middle_world += "(";
+        middle_world += GetTransitionWord(picked_state_index, picked_state_index);
+        middle_world += ")*";
+      }
+      for (auto& state : states) {
+        if (state.index != picked_state_index) {
+          int state_transitions_iterating_size = (int)state.transitions.size();
+          for (int transition_index = 0; transition_index < state_transitions_iterating_size; transition_index++) {
+            if (state.transitions[transition_index].destination_state_index == picked_state_index) {
+              for (auto& picked_state_transition : states[picked_state_index].transitions) {
+                if (picked_state_transition.destination_state_index != picked_state_index) {
+                  std::string new_transition_word;
+                  if (state.transitions[transition_index].input != epsilon) {
+                    new_transition_word += state.transitions[transition_index].input;
+                  }
+                  new_transition_word += middle_world;
+                  if (picked_state_transition.input != epsilon) {
+                    new_transition_word += picked_state_transition.input;
+                  }
+                  if (new_transition_word.empty()) {
+                    new_transition_word = epsilon;
+                  }
+                  InsertTransition(state.index, new_transition_word, picked_state_transition.destination_state_index);
+                }
+              }
+              state.transitions.erase(state.transitions.begin() + transition_index);
+              transition_index--;
+              state_transitions_iterating_size--;
+            }
+          }
+        }
+
+      }
+      states[picked_state_index].transitions.clear();
+    };
+  }
+  ReplaceMultipleTransitions();
+  return states[start_state_index].transitions[0].input;
 }
 
 std::vector<int> Automata::GetFinalStatesIndexes() {
@@ -282,4 +394,22 @@ bool Automata::TransitionExistsCheck(int from_index, const std::string& input, i
     }
   }
   return false;
+}
+
+bool Automata::TransitionExistsCheck(int from_index, int to_index) {
+  for (auto& transition : states[from_index].transitions) {
+    if (transition.destination_state_index == to_index) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string Automata::GetTransitionWord(int from_index, int to_index) {
+  for (auto& transition : states[from_index].transitions) {
+    if (transition.destination_state_index == to_index) {
+      return transition.input;
+    }
+  }
+  return "";
 }

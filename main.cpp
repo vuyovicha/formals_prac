@@ -7,6 +7,7 @@
 
 int main() {
   int states_amount;
+  std::cout << "Numeration of states should begin from 0 and there should be no skipped indexes " << std::endl;
   std::cout << "Enter states amount: ";
   std::cin >> states_amount;
 
@@ -30,6 +31,7 @@ int main() {
   Automata automata = Automata(states_amount, starting_state_index, final_states_indexes);
   std::cout << "ENTERING TRANSITIONS..";
   std::cout << std::endl;
+  std::cout << "Format example: a 1 (transition by word 'a' to state 1)" << std::endl;
 
   for (int i = 0; i < states_amount; i++) {
     std::cout << "Enter amount of transitions for state " << i << ": ";
@@ -57,5 +59,6 @@ int main() {
   dfa_auto.FullDFAtoMinDFA();
   std::cout << "......MIN FULL DFA......" << std::endl;
   dfa_auto.PrintAutomata();
+  std::cout << automata.FDFAtoRegularExpression();
   return 0;
 }

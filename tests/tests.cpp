@@ -88,3 +88,14 @@ TEST(Automata_test, MinDFA_creation) {
   EXPECT_EQ(true, TransitionExists(dfa_auto.states[2], "b", 1));
 }
 
+TEST(Automata_test, RegularExpression_generation) {
+  Automata automata = Automata(states_amount, starting_state_index, final_states_indexes);
+  AutomataTransitionsInserting(automata);
+  automata.DeleteEpsilonTransitions();
+  DFA dfa = DFA(automata);
+  Automata dfa_auto = Automata(dfa);
+  dfa_auto.DFAtoFullDFA();
+  dfa_auto.FullDFAtoMinDFA();
+  EXPECT_EQ(regex, dfa_auto.FDFAtoRegularExpression());
+}
+

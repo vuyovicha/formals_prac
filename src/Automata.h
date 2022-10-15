@@ -35,6 +35,16 @@ class Automata {
   std::string FDFAtoRegularExpression();
 
  private:
+  void ReplaceMultipleTransitions();
+
+  int PickInternalStateForRemoval();
+
+  static bool CheckIfValueIsPresent(int value, const std::vector<int>& values);
+
+  static std::vector<int> GetUniqueDestinationIndexes(const std::vector<Transition>& values);
+
+  static std::string GetWordsUnion(const std::vector<std::string>& words);
+
   std::vector<int> GetFinalStatesIndexes();
 
   bool IsDFAFullCheck();
@@ -52,6 +62,10 @@ class Automata {
   static bool TransitionExistsCheck(int from_index, const std::string& input, int to_index, const std::vector<State>& new_states);
 
   bool TransitionExistsCheck(int from_index, const std::string& input, int to_index);
+
+  bool TransitionExistsCheck(int from_index, int to_index);
+
+  std::string GetTransitionWord(int from_index, int to_index);
 };
 
 #endif //FORMALS_SRC_AUTOMATA_H_
